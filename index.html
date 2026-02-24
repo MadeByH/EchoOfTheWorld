@@ -1,115 +1,119 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Echo Of The World</title>
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <style>
-    body { margin: 0; overflow: hidden; touch-action: none; }
-    canvas { display: block; }
-  </style>
+<meta charset="UTF-8">
+<title>Echo Of The World</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#111;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+}
+
+.page{
+  flex:1;
+  display:none;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+
+.active{
+  display:flex;
+}
+
+.coin{
+  width:200px;
+  height:200px;
+  border-radius:50%;
+  background:gold;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-size:24px;
+  font-weight:bold;
+  color:#000;
+  box-shadow:0 0 40px gold;
+  cursor:pointer;
+  transition:transform 0.1s;
+}
+
+.coin:active{
+  transform:scale(0.9);
+}
+
+.counter{
+  font-size:28px;
+  margin-bottom:20px;
+}
+
+.navbar{
+  height:70px;
+  background:#222;
+  display:flex;
+  justify-content:space-around;
+  align-items:center;
+  border-top:1px solid #333;
+}
+
+.navbtn{
+  color:#aaa;
+  font-size:14px;
+  cursor:pointer;
+}
+
+.navbtn.active{
+  color:gold;
+}
+</style>
 </head>
+
 <body>
 
+<!-- صفحه اصلی -->
+<div id="home" class="page active">
+  <div class="counter">Love Coin: <span id="count">0</span></div>
+  <div class="coin" onclick="addCoin()">Love Coin</div>
+</div>
+
+<!-- صفحه پروفایل -->
+<div id="profile" class="page">
+  <h2>Profile</h2>
+  <p>Coming Soon...</p>
+</div>
+
+<!-- صفحه تنظیمات -->
+<div id="settings" class="page">
+  <h2>Settings</h2>
+  <p>Coming Soon...</p>
+</div>
+
+<!-- نوار پایین -->
+<div class="navbar">
+  <div class="navbtn active" onclick="showPage('home', this)">Home</div>
+  <div class="navbtn" onclick="showPage('profile', this)">Profile</div>
+  <div class="navbtn" onclick="showPage('settings', this)">Settings</div>
+</div>
+
 <script>
-const config = {
-    type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    backgroundColor: '#87CEEB', // آسمان آبی
-    physics: {
-        default: 'arcade',
-        arcade: { debug: false }
-    },
-    scene: {
-        preload: preload,
-        create: create,
-        update: update
-    },
-    scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
-    }
-};
+let count = 0;
 
-const game = new Phaser.Game(config);
-
-let player;
-let joystick = { x:0, y:0, active:false, pointerId:null };
-
-function preload() {
-    this.load.image('player', 'https://labs.phaser.io/assets/sprites/phaser-dude.png');
+function addCoin(){
+  count++;
+  document.getElementById("count").innerText = count;
 }
 
-function create() {
-    this.physics.world.setBounds(0, 0, 2000, 2000);
-
-    // زمین سبز بزرگ
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x228B22, 1);
-    graphics.fillRect(0, 0, 2000, 2000);
-
-    // بازیکن
-    player = this.physics.add.sprite(400, 300, 'player');
-    player.setCollideWorldBounds(true);
-
-    // دوربین دنبال‌کننده
-    this.cameras.main.setBounds(0, 0, 2000, 2000);
-    this.cameras.main.startFollow(player);
-
-    // لمس جوی‌استیک
-    this.input.on('pointerdown', (pointer) => {
-        if(pointer.x < window.innerWidth/2) {
-            joystick.active = true;
-            joystick.x = pointer.x;
-            joystick.y = pointer.y;
-            joystick.pointerId = pointer.id;
-        }
-    });
-
-    this.input.on('pointerup', (pointer) => {
-        if(pointer.id === joystick.pointerId) {
-            joystick.active = false;
-            joystick.pointerId = null;
-        }
-    });
-
-    this.input.on('pointermove', (pointer) => {
-        if(joystick.active && pointer.id === joystick.pointerId) {
-            joystick.dx = pointer.x - joystick.x;
-            joystick.dy = pointer.y - joystick.y;
-        }
-    });
-}
-
-function update() {
-    const speed = 250;
-    let vx = 0, vy = 0;
-
-    if(joystick.active) {
-        vx = joystick.dx;
-        vy = joystick.dy;
-        const maxDist = 50; // شعاع جوی‌استیک
-        const mag = Math.sqrt(vx*vx + vy*vy);
-        if(mag > maxDist) {
-            vx = (vx/mag)*maxDist;
-            vy = (vy/mag)*maxDist;
-        }
-        player.setVelocity(vx*5, vy*5); // سرعت حرکت
-    } else {
-        player.setVelocity(0);
-    }
-
-    // جوی‌استیک را رسم می‌کنیم
-    if(this.joystickGraphics) this.joystickGraphics.clear();
-    this.joystickGraphics = this.add.graphics();
-    if(joystick.active) {
-        this.joystickGraphics.fillStyle(0x888888, 0.5);
-        this.joystickGraphics.fillCircle(joystick.x, joystick.y, 50);
-        this.joystickGraphics.fillStyle(0xcccccc, 0.8);
-        this.joystickGraphics.fillCircle(joystick.x + vx, joystick.y + vy, 25);
-    }
+function showPage(pageId, btn){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".navbtn").forEach(b => b.classList.remove("active"));
+  document.getElementById(pageId).classList.add("active");
+  btn.classList.add("active");
 }
 </script>
 
