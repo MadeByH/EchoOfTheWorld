@@ -2,70 +2,68 @@
 <html lang="fa">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, orientation=landscape" />
-<title>Top‑Down 3D World Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Top‑Down 3D World Game (Final Fix - V6)</title>
 <style>
 html,body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: radial-gradient(circle at center, #87cefa 40%, #5bc0de 100%);
-}
-
-/* تاکید بر حالت افقی (Landscape) */
-@media screen and (orientation: portrait) {
-  body::before {
-    content: "🔄 لطفا گوشی را افقی بچرخان!";
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    color: #fff;
-    font-size: 22px;
-    font-family: sans-serif;
-    z-index: 999;
-  }
+  background: #000000; 
+  width: 100vw;
+  height: 100vh;
 }
 
 #game {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  perspective: 1000px;
+  width: 100%;
+  height: 100%;
+  perspective: 1000px; 
   overflow: hidden;
 }
 
 #world {
   position: absolute;
-  width: 4000px;
-  height: 4000px;
+  width: 30000px; 
+  height: 30000px;
   background: repeating-linear-gradient(45deg, #4caf50 0 80px, #43a047 80px 160px);
-  transform-origin: center;
-  transform: rotateX(60deg) translateZ(-500px);
+  
+  /* مرکز دنیا را در مختصات صفحه قرار می‌دهیم */
+  left: calc(50% - 15000px);
+  top: calc(50% - 15000px);
+  
+  transform-origin: 50% 50%;
+  transform: rotateX(60deg); 
 }
 
-/* زمین‌های تزئینی */
 .tile {
   position: absolute;
-  width: 200px;
-  height: 200px;
-  background: rgba(0,0,0,0.05);
-  border: 1px solid rgba(255,255,255,0.2);
+  width: 150px;
+  height: 150px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
 }
 
-/* کاراکتر از بالا دیده می‌شود */
 #player {
-  position: absolute;
+  position: absolute; 
   width: 60px;
   height: 60px;
   background: url('https://cdn-icons-png.flaticon.com/512/4140/4140048.png') center/contain no-repeat;
-  transform: translateZ(30px);
+  
+  /* **تغییر اصلی:** تنظیم مختصات مطلق به مرکز هندسی 30000x30000 */
+  left: 15000px; 
+  top: 15000px;  
+  
+  z-index: 100; 
+  transform-origin: 30px 30px; 
+  transform: rotateZ(0deg); 
   transition: transform 0.05s linear;
+  
+  /* **تست اضطراری:** اگر همچنان دیده نشد، این خط را فعال کنید تا ببینیم مشکل از خود تصویر است یا از ترنسفورم */
+  /* background-color: red !important; */
 }
 
-/* جوی‌استیک */
+/* جوی‌استیک (بدون تغییر) */
 #joystick {
   position: fixed;
   bottom: 40px;
@@ -73,10 +71,10 @@ html,body {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   touch-action: none;
-  z-index: 10;
+  z-index: 200;
 }
 #stick {
   position: absolute;
@@ -94,8 +92,17 @@ html,body {
 <body>
 <div id="game">
   <div id="world">
-    <div id="player"></div>
+    <!-- کاشی‌های تستی در مرکز (۱۵۰۰۰, ۱۵۰۰۰) -->
+    <div class="tile" style="top: 14950px; left: 14950px;"></div>
+    <div class="tile" style="top: 14950px; left: 15100px;"></div>
+    <div class="tile" style="top: 15100px; left: 14950px;"></div>
+    <div class="tile" style="top: 15100px; left: 15100px;"></div>
+    
+    <!-- کاشی‌های تست فاصله دور -->
+    <div class="tile" style="top: 5000px; left: 5000px;"></div>
+    <div class="tile" style="top: 20000px; left: 25000px;"></div>
   </div>
+  <div id="player"></div>
 </div>
 
 <div id="joystick">
@@ -113,13 +120,15 @@ let center = {x: 0, y: 0};
 let delta = {x: 0, y: 0};
 let joyRadius = 40;
 let velocity = {x: 0, y: 0};
-let speed = 5;
+let speed = 10; 
 
-// مختصات بازیکن وسط جهان
-let playerPos = {x: 2000, y: 2000};
+// مختصات بازیکن در دنیای 30000x30000
+let playerPos = {x: 15000, y: 15000}; 
+const WORLD_SIZE = 30000;
 
 // 🌐 منطق جوی‌استیک
 joystick.addEventListener('touchstart', (e) => {
+  e.preventDefault();
   joyActive = true;
   const rect = joystick.getBoundingClientRect();
   center.x = rect.left + rect.width / 2;
@@ -127,18 +136,20 @@ joystick.addEventListener('touchstart', (e) => {
 });
 
 joystick.addEventListener('touchmove', (e) => {
+  e.preventDefault();
   if (!joyActive) return;
   let t = e.touches[0];
   delta.x = t.clientX - center.x;
   delta.y = t.clientY - center.y;
   const dist = Math.sqrt(delta.x**2 + delta.y**2);
   const angle = Math.atan2(delta.y, delta.x);
+  
   if (dist > joyRadius) {
     delta.x = Math.cos(angle) * joyRadius;
     delta.y = Math.sin(angle) * joyRadius;
   }
   stick.style.transform = `translate(${delta.x}px, ${delta.y}px)`;
-  // سرعت براساس محور X و Y (top‑down)
+  
   velocity.x = (delta.x / joyRadius) * speed;
   velocity.y = (delta.y / joyRadius) * speed;
 });
@@ -151,26 +162,31 @@ joystick.addEventListener('touchend', () => {
 
 // 🎞️ حلقه حرکتی فریم به فریم
 function loop() {
-  playerPos.x += velocity.x;
-  playerPos.y += velocity.y;
+  
+  // 1. به‌روزرسانی موقعیت بازیکن و محاسبه حرکت دنیا
+  if (velocity.x !== 0 || velocity.y !== 0) {
+      playerPos.x += velocity.x; 
+      playerPos.y += velocity.y; 
+  }
 
-  // محدود کردن در مرز دنیا:
-  playerPos.x = Math.max(0, Math.min(3940, playerPos.x));
-  playerPos.y = Math.max(0, Math.min(3940, playerPos.y));
+  const dx_world = playerPos.x - (WORLD_SIZE / 2); 
+  const dy_world = playerPos.y - (WORLD_SIZE / 2); 
 
-  // حرکت دنیا نسبت به بازیکن (دوربین)
   world.style.transform = `
       rotateX(60deg)
-      translateZ(-500px)
-      translateX(${-playerPos.x + window.innerWidth/2}px)
-      translateY(${-playerPos.y + window.innerHeight/1.5}px)
+      translateX(${-dx_world}px) 
+      translateY(${-dy_world}px) 
   `;
 
-  // تغییر زاویه کاراکتر بر اساس جهت حرکت
+  // 2. تنظیم زاویه کاراکتر (فقط چرخش Z)
+  let angleDeg = 0;
   if (velocity.x !== 0 || velocity.y !== 0) {
-    let angleDeg = Math.atan2(-velocity.y, velocity.x) * 180 / Math.PI;
-    player.style.transform = `translateZ(30px) rotateZ(${angleDeg}deg)`;
+    angleDeg = Math.atan2(-velocity.y, velocity.x) * 180 / Math.PI;
   }
+  
+  player.style.transform = `
+    rotateZ(${angleDeg}deg)
+  `;
 
   requestAnimationFrame(loop);
 }
