@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Top‑Down 3D World Game (Final Fix - V6)</title>
+<title>Top‑Down 3D World Game (Final Fix - V10)</title>
 <style>
 html,body {
   margin: 0;
@@ -20,6 +20,7 @@ html,body {
   height: 100%;
   perspective: 1000px; 
   overflow: hidden;
+  transform-style: preserve-3d; 
 }
 
 #world {
@@ -33,6 +34,7 @@ html,body {
   top: calc(50% - 15000px);
   
   transform-origin: 50% 50%;
+  /* چرخش اصلی زمین */
   transform: rotateX(60deg); 
 }
 
@@ -50,17 +52,16 @@ html,body {
   height: 60px;
   background: url('https://cdn-icons-png.flaticon.com/512/4140/4140048.png') center/contain no-repeat;
   
-  /* **تغییر اصلی:** تنظیم مختصات مطلق به مرکز هندسی 30000x30000 */
-  left: 15000px; 
-  top: 15000px;  
+  /* **موقعیت جدید:** مرکز کاراکتر روی مرکز صفحه (#game) */
+  left: calc(50% - 30px); /* 50% مرکز صفحه منهای نصف عرض کاراکتر */
+  top: calc(50% - 30px);  /* 50% مرکز صفحه منهای نصف ارتفاع کاراکتر */
   
   z-index: 100; 
   transform-origin: 30px 30px; 
-  transform: rotateZ(0deg); 
-  transition: transform 0.05s linear;
   
-  /* **تست اضطراری:** اگر همچنان دیده نشد، این خط را فعال کنید تا ببینیم مشکل از خود تصویر است یا از ترنسفورم */
-  /* background-color: red !important; */
+  /* **تغییر کلیدی V10:** اعمال چرخش X برای دید ایزومتریک */
+  transform: rotateX(60deg) rotateZ(0deg); 
+  transition: transform 0.05s linear;
 }
 
 /* جوی‌استیک (بدون تغییر) */
@@ -92,7 +93,7 @@ html,body {
 <body>
 <div id="game">
   <div id="world">
-    <!-- کاشی‌های تستی در مرکز (۱۵۰۰۰, ۱۵۰۰۰) -->
+    <!-- کاشی‌های تستی در مرکز (15000, 15000) -->
     <div class="tile" style="top: 14950px; left: 14950px;"></div>
     <div class="tile" style="top: 14950px; left: 15100px;"></div>
     <div class="tile" style="top: 15100px; left: 14950px;"></div>
@@ -120,13 +121,13 @@ let center = {x: 0, y: 0};
 let delta = {x: 0, y: 0};
 let joyRadius = 40;
 let velocity = {x: 0, y: 0};
-let speed = 10; 
+let speed = 10; // سرعت بر حسب پیکسل در فریم
 
 // مختصات بازیکن در دنیای 30000x30000
 let playerPos = {x: 15000, y: 15000}; 
 const WORLD_SIZE = 30000;
 
-// 🌐 منطق جوی‌استیک
+// 🌐 منطق جوی‌استیک (بدون تغییر)
 joystick.addEventListener('touchstart', (e) => {
   e.preventDefault();
   joyActive = true;
@@ -150,6 +151,7 @@ joystick.addEventListener('touchmove', (e) => {
   }
   stick.style.transform = `translate(${delta.x}px, ${delta.y}px)`;
   
+  // محاسبه بردار سرعت
   velocity.x = (delta.x / joyRadius) * speed;
   velocity.y = (delta.y / joyRadius) * speed;
 });
@@ -168,23 +170,31 @@ function loop() {
       playerPos.x += velocity.x; 
       playerPos.y += velocity.y; 
   }
+  
+  // محدود کردن موقعیت بازیکن در فضای 30000x30000 
+  playerPos.x = Math.max(0, Math.min(WORLD_SIZE, playerPos.x));
+  playerPos.y = Math.max(0, Math.min(WORLD_SIZE, playerPos.y));
+
 
   const dx_world = playerPos.x - (WORLD_SIZE / 2); 
   const dy_world = playerPos.y - (WORLD_SIZE / 2); 
 
+  // اعمال جابجایی دنیا برای شبیه‌سازی حرکت دوربین
   world.style.transform = `
       rotateX(60deg)
       translateX(${-dx_world}px) 
       translateY(${-dy_world}px) 
   `;
 
-  // 2. تنظیم زاویه کاراکتر (فقط چرخش Z)
+  // 2. تنظیم زاویه کاراکتر
   let angleDeg = 0;
   if (velocity.x !== 0 || velocity.y !== 0) {
     angleDeg = Math.atan2(-velocity.y, velocity.x) * 180 / Math.PI;
   }
   
+  // **اعمال چرخش X=60deg** به کاراکتر برای دید ایزومتریک
   player.style.transform = `
+    rotateX(60deg) 
     rotateZ(${angleDeg}deg)
   `;
 
