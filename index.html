@@ -1,121 +1,180 @@
 <!DOCTYPE html>
-<html>
+<html lang="fa">
 <head>
-<meta charset="UTF-8">
-<title>Echo Of The World</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, orientation=landscape" />
+<title>Top‑Down 3D World Game</title>
 <style>
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#111;
-  color:white;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
+html,body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #87cefa 40%, #5bc0de 100%);
 }
 
-.page{
-  flex:1;
-  display:none;
-  justify-content:center;
-  align-items:center;
-  flex-direction:column;
+/* تاکید بر حالت افقی (Landscape) */
+@media screen and (orientation: portrait) {
+  body::before {
+    content: "🔄 لطفا گوشی را افقی بچرخان!";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    font-size: 22px;
+    font-family: sans-serif;
+    z-index: 999;
+  }
 }
 
-.active{
-  display:flex;
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  perspective: 1000px;
+  overflow: hidden;
 }
 
-.coin{
-  width:200px;
-  height:200px;
-  border-radius:50%;
-  background:gold;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  font-size:24px;
-  font-weight:bold;
-  color:#000;
-  box-shadow:0 0 40px gold;
-  cursor:pointer;
-  transition:transform 0.1s;
+#world {
+  position: absolute;
+  width: 4000px;
+  height: 4000px;
+  background: repeating-linear-gradient(45deg, #4caf50 0 80px, #43a047 80px 160px);
+  transform-origin: center;
+  transform: rotateX(60deg) translateZ(-500px);
 }
 
-.coin:active{
-  transform:scale(0.9);
+/* زمین‌های تزئینی */
+.tile {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
-.counter{
-  font-size:28px;
-  margin-bottom:20px;
+/* کاراکتر از بالا دیده می‌شود */
+#player {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  background: url('https://cdn-icons-png.flaticon.com/512/4140/4140048.png') center/contain no-repeat;
+  transform: translateZ(30px);
+  transition: transform 0.05s linear;
 }
 
-.navbar{
-  height:70px;
-  background:#222;
-  display:flex;
-  justify-content:space-around;
-  align-items:center;
-  border-top:1px solid #333;
+/* جوی‌استیک */
+#joystick {
+  position: fixed;
+  bottom: 40px;
+  left: 40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  touch-action: none;
+  z-index: 10;
 }
-
-.navbtn{
-  color:#aaa;
-  font-size:14px;
-  cursor:pointer;
-}
-
-.navbtn.active{
-  color:gold;
+#stick {
+  position: absolute;
+  top: 45px;
+  left: 45px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  pointer-events: none;
 }
 </style>
 </head>
 
 <body>
-
-<!-- صفحه اصلی -->
-<div id="home" class="page active">
-  <div class="counter">Love Coin: <span id="count">0</span></div>
-  <div class="coin" onclick="addCoin()">Love Coin</div>
+<div id="game">
+  <div id="world">
+    <div id="player"></div>
+  </div>
 </div>
 
-<!-- صفحه پروفایل -->
-<div id="profile" class="page">
-  <h2>Profile</h2>
-  <p>Coming Soon...</p>
-</div>
-
-<!-- صفحه تنظیمات -->
-<div id="settings" class="page">
-  <h2>Settings</h2>
-  <p>Coming Soon...</p>
-</div>
-
-<!-- نوار پایین -->
-<div class="navbar">
-  <div class="navbtn active" onclick="showPage('home', this)">Home</div>
-  <div class="navbtn" onclick="showPage('profile', this)">Profile</div>
-  <div class="navbtn" onclick="showPage('settings', this)">Settings</div>
+<div id="joystick">
+  <div id="stick"></div>
 </div>
 
 <script>
-let count = 0;
+const player = document.getElementById('player');
+const world = document.getElementById('world');
+const joystick = document.getElementById('joystick');
+const stick = document.getElementById('stick');
 
-function addCoin(){
-  count++;
-  document.getElementById("count").innerText = count;
-}
+let joyActive = false;
+let center = {x: 0, y: 0};
+let delta = {x: 0, y: 0};
+let joyRadius = 40;
+let velocity = {x: 0, y: 0};
+let speed = 5;
 
-function showPage(pageId, btn){
-  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  document.querySelectorAll(".navbtn").forEach(b => b.classList.remove("active"));
-  document.getElementById(pageId).classList.add("active");
-  btn.classList.add("active");
+// مختصات بازیکن وسط جهان
+let playerPos = {x: 2000, y: 2000};
+
+// 🌐 منطق جوی‌استیک
+joystick.addEventListener('touchstart', (e) => {
+  joyActive = true;
+  const rect = joystick.getBoundingClientRect();
+  center.x = rect.left + rect.width / 2;
+  center.y = rect.top + rect.height / 2;
+});
+
+joystick.addEventListener('touchmove', (e) => {
+  if (!joyActive) return;
+  let t = e.touches[0];
+  delta.x = t.clientX - center.x;
+  delta.y = t.clientY - center.y;
+  const dist = Math.sqrt(delta.x**2 + delta.y**2);
+  const angle = Math.atan2(delta.y, delta.x);
+  if (dist > joyRadius) {
+    delta.x = Math.cos(angle) * joyRadius;
+    delta.y = Math.sin(angle) * joyRadius;
+  }
+  stick.style.transform = `translate(${delta.x}px, ${delta.y}px)`;
+  // سرعت براساس محور X و Y (top‑down)
+  velocity.x = (delta.x / joyRadius) * speed;
+  velocity.y = (delta.y / joyRadius) * speed;
+});
+
+joystick.addEventListener('touchend', () => {
+  joyActive = false;
+  stick.style.transform = `translate(0px, 0px)`;
+  velocity = {x: 0, y: 0};
+});
+
+// 🎞️ حلقه حرکتی فریم به فریم
+function loop() {
+  playerPos.x += velocity.x;
+  playerPos.y += velocity.y;
+
+  // محدود کردن در مرز دنیا:
+  playerPos.x = Math.max(0, Math.min(3940, playerPos.x));
+  playerPos.y = Math.max(0, Math.min(3940, playerPos.y));
+
+  // حرکت دنیا نسبت به بازیکن (دوربین)
+  world.style.transform = `
+      rotateX(60deg)
+      translateZ(-500px)
+      translateX(${-playerPos.x + window.innerWidth/2}px)
+      translateY(${-playerPos.y + window.innerHeight/1.5}px)
+  `;
+
+  // تغییر زاویه کاراکتر بر اساس جهت حرکت
+  if (velocity.x !== 0 || velocity.y !== 0) {
+    let angleDeg = Math.atan2(-velocity.y, velocity.x) * 180 / Math.PI;
+    player.style.transform = `translateZ(30px) rotateZ(${angleDeg}deg)`;
+  }
+
+  requestAnimationFrame(loop);
 }
+loop();
 </script>
-
 </body>
 </html>
