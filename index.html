@@ -12,6 +12,7 @@ const config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
+    backgroundColor: '#87CEEB',
     physics: {
         default: 'arcade',
         arcade: { debug: false }
@@ -33,13 +34,17 @@ function preload() {
 }
 
 function create() {
-    // ساخت دنیای بزرگ‌تر
+
     this.physics.world.setBounds(0, 0, 2000, 2000);
+
+    // ساخت زمین سبز
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0x228B22, 1);
+    graphics.fillRect(0, 0, 2000, 2000);
 
     player = this.physics.add.sprite(400, 300, 'player');
     player.setCollideWorldBounds(true);
 
-    // دوربین دنبال بازیکن
     this.cameras.main.setBounds(0, 0, 2000, 2000);
     this.cameras.main.startFollow(player);
 
@@ -49,20 +54,12 @@ function create() {
 function update() {
     player.setVelocity(0);
 
-    if (cursors.left.isDown) {
-        player.setVelocityX(-250);
-    }
-    if (cursors.right.isDown) {
-        player.setVelocityX(250);
-    }
-    if (cursors.up.isDown) {
-        player.setVelocityY(-250);
-    }
-    if (cursors.down.isDown) {
-        player.setVelocityY(250);
-    }
+    if (cursors.left.isDown) player.setVelocityX(-250);
+    if (cursors.right.isDown) player.setVelocityX(250);
+    if (cursors.up.isDown) player.setVelocityY(-250);
+    if (cursors.down.isDown) player.setVelocityY(250);
 }
 </script>
 
 </body>
-  </html>
+</html>
